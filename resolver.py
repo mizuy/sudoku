@@ -2,10 +2,6 @@
 import sys, os
 from itertools import product
 
-def iexcept(index):
-    "return range(1,10) except index"
-    return set(range(0,9))-set([index])
-
 def iterate_box(bx, by):
     for ix,iy in product(range(3), xrange(3)):
         yield 3*bx+ix, 3*by+iy
@@ -33,21 +29,21 @@ class Cell(object):
         return ret
 
     def __str__(self):
-        if self.fixed():
+        if self.filled():
             return str(self.value)
         else:
-            return '_'
+            return ' '
 
     __repr__ = __str__
 
-    def fixed(self):
+    def filled(self):
         return not not self.value
 
     def get(self):
         return value
 
     def set(self, value):
-        if self.fixed():
+        if self.filled():
             raise Exception('already filled.')
         self.value = value
         self.candidate = set([value])
@@ -88,11 +84,11 @@ class Sudoku(object):
     def __hash__(self):
         return hash(''.join([str(x) for x in self.matrix]))
 
-    def iter_unfixed(self):
+    def iter_unfilled(self):
         for x in range(9):
             for y in range(9):
                 c = self.get(x,y)
-                if c.fixed():
+                if c.filled():
                     continue
                 else:
                     yield x,y,c
@@ -104,10 +100,10 @@ class Sudoku(object):
             return False
 
     def filled(self):
-        return sum(1 for x in self.matrix  if x.fixed())
+        return sum(1 for x in self.matrix  if x.filled())
 
     def __str__(self):
-        ret = '{0}\n'.format(self.filled())
+        ret = '' #{0}\n'.format(self.filled())
         for y in range(9):
             l = chunks(3, ''.join(str(self.get(x,y)) for x in range(9)))
             ret += '|'.join(l)+'\n'
@@ -121,14 +117,14 @@ class Sudoku(object):
         return self.matrix[y*9+x]
 
     def _update_candidate(self):
-        for x,y,c in self.iter_unfixed():
+        for x,y,c in self.iter_unfilled():
             row = set(self.get(x, fy).value for fy in range(9))
             col = set(self.get(fx, y).value for fx in range(9))
             box = set(self.get(fx, fy).value for fx,fy in iterate_box(x/3, y/3))
             if c.update_conflicts(row|col|box):
                 return True
 
-        for x,y,c in self.iter_unfixed():
+        for x,y,c in self.iter_unfilled():
             sy = reduce(set.union, (self.get(x,ty).candidate for ty in range(9) if ty!=y))
             if c.check_uniquify(sy):
                 return True
@@ -160,7 +156,7 @@ class Sudoku(object):
                 return set()
 
             try:
-                for x,y,c in self.iter_unfixed():
+                for x,y,c in self.iter_unfilled():
                     candidate = c.candidate.copy()
                     for cd in candidate:
                         next = self.copy()
@@ -183,7 +179,7 @@ SAMPLES = [
 '000060004,600000370,500000000,102900006,030000000,009300008,305009020,000005400,018200700',
 '870200300,000640100,600000007,060010000,000090400,050004070,020030000,090006000,005000001',
 '005020040,008500000,100030000,700060050,000400600,950000000,000800103,030104002,000370004',
-'010900050,080000084,000103000,600000070,002470000,900008403,165000800,000050006,400000020',
+'010900050,080000094,000103000,600000070,002470000,900008403,165000800,000050006,400000020',
 '100007090,030020008,009600500,005300900,010080002,600004000,300000010,040000007,007000300'
 ]
 
@@ -192,15 +188,22 @@ def main():
         problems = [sys.argv[1]]
     else:
         problems = SAMPLES
+
     for problem in problems:
+        print '-'*60
         problem = ''.join(problem.split(','))
         if len(problem)!=9*9:
             print 'invalid problem'
-        ints = list(int(x) for x in list(problem))
-        sudoku = Sudoku(ints)
+            continue
+
+        sudoku = Sudoku(list(int(x) for x in list(problem)))
+        print 'problem is'
         print sudoku
         results = sudoku.backtrack()
-        print results
+        print '{0} answers found:'.format(len(results))
+        for r in results:
+            print r
+
 
 if __name__ == '__main__':
     main()
